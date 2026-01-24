@@ -162,27 +162,27 @@ impl CPlayerInfo {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
-        self.m_szNick
-            .as_str()
-            .map(|name| {
-                let mut hasher = DefaultHasher::new();
-                name.hash(&mut hasher);
-                hasher.finish()
-            })
-            .unwrap_or(0)
+        unsafe {
+            CStdString::as_str_from_ptr(std::ptr::addr_of!(self.m_szNick))
+        }
+        .map(|name| {
+            let mut hasher = DefaultHasher::new();
+            name.hash(&mut hasher);
+            hasher.finish()
+        })
+        .unwrap_or(0)
     }
 
     pub fn name(&self) -> Option<&str> {
-        self.m_szNick.as_str().ok()
+        unsafe { CStdString::as_str_from_ptr(std::ptr::addr_of!(self.m_szNick)).ok() }
     }
 
     pub fn name_with_id(&self) -> String {
-        self.m_szNick
-            .as_str()
-            .ok()
+        unsafe { CStdString::as_str_from_ptr(std::ptr::addr_of!(self.m_szNick)).ok() }
             .and_then(|name| {
                 let remote = self.remote_player()?;
-                Some(format!("[ID: {}] {}", remote.m_nId, name))
+                let id = unsafe { std::ptr::read_unaligned(std::ptr::addr_of!(remote.m_nId)) };
+                Some(format!("[ID: {}] {}", id, name))
             })
             .unwrap_or_else(|| "[ID: -1] bugged name".to_owned())
     }
@@ -436,11 +436,15 @@ impl CLocalPlayer {
     }
 
     pub fn name(&self) -> Option<&str> {
-        player_pool().and_then(|players| players.m_localInfo.m_szName.as_str().ok())
+        player_pool().and_then(|players| unsafe {
+            CStdString::as_str_from_ptr(std::ptr::addr_of!(players.m_localInfo.m_szName)).ok()
+        })
     }
 
     pub fn id(&self) -> Option<i32> {
-        player_pool().map(|players| players.m_localInfo.m_nId as i32)
+        player_pool().map(|players| unsafe {
+            std::ptr::read_unaligned(std::ptr::addr_of!(players.m_localInfo.m_nId)) as i32
+        })
     }
 }
 
@@ -735,15 +739,16 @@ pub fn netgame() -> *mut CNetGame {
 
 pub fn players<'a>() -> Option<impl Iterator<Item = &'a mut CPlayerInfo>> {
     player_pool().map(|pool| {
-        pool.m_pObject
-            .iter_mut()
+        let players = unsafe { std::ptr::read_unaligned(std::ptr::addr_of!(pool.m_pObject)) };
+        players
+            .into_iter()
             .filter(|player| !player.is_null())
-            .map(|player| unsafe { &mut **player })
+            .map(|player| unsafe { &mut *player })
     })
 }
 
 pub fn find_player<'a>(player_id: i32) -> Option<&'a CPlayerInfo> {
-    if player_id < 0 || player_id > 1000 {
+    if player_id < 0 || player_id >= 1000 {
         return None;
     }
 
@@ -751,11 +756,13 @@ pub fn find_player<'a>(player_id: i32) -> Option<&'a CPlayerInfo> {
         let player_id = player_id as usize;
 
         if let Some(players) = player_pool() {
-            if players.m_pObject[player_id].is_null() {
+            let list = std::ptr::read_unaligned(std::ptr::addr_of!(players.m_pObject));
+
+            if list[player_id].is_null() {
                 return None;
             }
 
-            Some(&mut *players.m_pObject[player_id])
+            Some(&mut *list[player_id])
         } else {
             None
         }
@@ -763,7 +770,7 @@ pub fn find_player<'a>(player_id: i32) -> Option<&'a CPlayerInfo> {
 }
 
 pub fn find_vehicle<'a>(vehicle_id: i32) -> Option<&'a mut CVehicle> {
-    if vehicle_id < 0 || vehicle_id > 2000 {
+    if vehicle_id < 0 || vehicle_id >= 2000 {
         return None;
     }
 
@@ -771,11 +778,13 @@ pub fn find_vehicle<'a>(vehicle_id: i32) -> Option<&'a mut CVehicle> {
         let vehicle_id = vehicle_id as usize;
 
         if let Some(vehicles) = vehicle_pool() {
-            if vehicles.m_pObject[vehicle_id].is_null() {
+            let list = std::ptr::read_unaligned(std::ptr::addr_of!(vehicles.m_pObject));
+
+            if list[vehicle_id].is_null() {
                 return None;
             }
 
-            Some(&mut *vehicles.m_pObject[vehicle_id])
+            Some(&mut *list[vehicle_id])
         } else {
             None
         }
@@ -783,9 +792,15 @@ pub fn find_vehicle<'a>(vehicle_id: i32) -> Option<&'a mut CVehicle> {
 }
 
 pub fn local_player<'a>() -> Option<&'a mut CLocalPlayer> {
-    player_pool()
-        .filter(|pool| !pool.m_localInfo.m_pObject.is_null())
-        .map(|pool| unsafe { &mut *pool.m_localInfo.m_pObject })
+    player_pool().and_then(|pool| unsafe {
+        let local_ptr = std::ptr::read_unaligned(std::ptr::addr_of!(pool.m_localInfo.m_pObject));
+
+        if local_ptr.is_null() {
+            None
+        } else {
+            Some(&mut *local_ptr)
+        }
+    })
 }
 
 pub fn player_pool() -> Option<&'static mut CPlayerPool> {
@@ -825,7 +840,7 @@ pub fn object_pool() -> Option<&'static mut CObjectPool> {
 }
 
 pub fn find_object<'a>(object_id: i32) -> Option<&'a mut CObject> {
-    if object_id < 0 || object_id > 1000 {
+    if object_id < 0 || object_id >= 1000 {
         return None;
     }
 

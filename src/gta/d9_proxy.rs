@@ -9,7 +9,7 @@ use winapi::um::unknwnbase::{IUnknown, IUnknownVtbl};
 use winapi::um::wingdi::{PALETTEENTRY, RGNDATA};
 use winapi::um::winnt::{HANDLE, HRESULT, VOID};
 
-use detour::GenericDetour;
+use retour::GenericDetour;
 
 type CreateDevice = extern "stdcall" fn(u32) -> *mut IDirect3D9;
 

@@ -15,7 +15,7 @@ struct WndProcData {
     callback: fn(),
     hwnd: HWND,
     prev_ptr: LONG,
-    additional_cb: Vec<Box<FnMut(UINT, WPARAM, LPARAM) -> bool + 'static>>,
+    additional_cb: Vec<Box<dyn FnMut(UINT, WPARAM, LPARAM) -> bool + 'static>>,
 }
 
 static mut WNDPROC_DATA: Option<WndProcData> = None;

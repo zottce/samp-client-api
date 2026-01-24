@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 
 use super::{v037, v037r3};
 use super::version::{Version, version};
-use detour::GenericDetour;
+use retour::GenericDetour;
 use crate::samp::Gamestate;
 
 pub struct NetGame<'a> {

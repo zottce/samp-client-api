@@ -20,7 +20,7 @@ pub type ID = std::os::raw::c_ushort;
 pub type NUMBER = std::os::raw::c_uchar;
 pub type D3DCOLOR = std::os::raw::c_ulong;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct CStdString {
     bytes: [u8; 16], // it's like union
@@ -29,6 +29,30 @@ pub struct CStdString {
 }
 
 impl CStdString {
+    unsafe fn bytes_from_ptr<'a>(ptr: *const CStdString) -> &'a [u8] {
+        let len = std::ptr::read_unaligned(std::ptr::addr_of!((*ptr).len)) as usize;
+        let capacity = std::ptr::read_unaligned(std::ptr::addr_of!((*ptr).capacity));
+        let bytes_ptr = std::ptr::addr_of!((*ptr).bytes) as *const u8;
+
+        if capacity <= 0xF {
+            std::slice::from_raw_parts(bytes_ptr, len)
+        } else {
+            let ptr_ptr = bytes_ptr as *const usize;
+            let heap_ptr = std::ptr::read_unaligned(ptr_ptr) as *const u8;
+            std::slice::from_raw_parts(heap_ptr, len)
+        }
+    }
+
+    pub unsafe fn as_str_from_ptr<'a>(
+        ptr: *const CStdString,
+    ) -> Result<&'a str, std::str::Utf8Error> {
+        std::str::from_utf8(Self::bytes_from_ptr(ptr))
+    }
+
+    pub unsafe fn as_str_unchecked_from_ptr<'a>(ptr: *const CStdString) -> &'a str {
+        std::str::from_utf8_unchecked(Self::bytes_from_ptr(ptr))
+    }
+
     fn bytes(&self) -> &[u8] {
         let len = self.len as usize;
 
