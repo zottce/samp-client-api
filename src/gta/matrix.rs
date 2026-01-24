@@ -1,12 +1,12 @@
 #[repr(C, packed)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct CSimpleTransform {
     pub m_vPosn: CVector,
     pub m_fHeading: f32,
 }
 
 #[repr(C, packed)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct CPlaceable {
     pub vtable_: *const (),
     pub m_placement: CSimpleTransform,
@@ -61,7 +61,7 @@ impl CVector {
 }
 
 #[repr(C, packed)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct RwMatrix {
     pub right: CVector,
     pub flags: std::os::raw::c_ulong,

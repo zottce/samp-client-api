@@ -1,10 +1,10 @@
 [package]
 name = "client-api"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["ZOTTCE <zottce@gmail.com>"]
-edition = "2018"
+edition = "2024"
 
 [dependencies]
 winapi = { version = "0.3.8", features = ["d3d9", "libloaderapi", "winuser", "winver"] }
-detour = { git = "https://github.com/darfink/detour-rs", rev = "3b6f17a" }
+retour = { version = "0.4.0-alpha.4", features = ["thiscall-abi"] }
 log = "0.4.14"

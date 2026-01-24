@@ -1,5 +1,5 @@
-#![feature(abi_thiscall)]
 #![allow(non_snake_case)]
+#![allow(static_mut_refs)]
 
 pub mod gta;
 pub mod samp;

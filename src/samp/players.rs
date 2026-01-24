@@ -113,15 +113,22 @@ impl<'a> Player<'a> {
     }
 
     pub fn remote_player(&self) -> Option<RemotePlayer> {
+        let remote_v1 = self
+            .player_v1
+            .as_ref()
+            .and_then(|player| player.remote_player());
+        let remote_v3 = self
+            .player_v3
+            .as_ref()
+            .and_then(|player| player.remote_player());
+
+        if remote_v1.is_none() && remote_v3.is_none() {
+            return None;
+        }
+
         Some(RemotePlayer {
-            remote_v1: self
-                .player_v1
-                .as_ref()
-                .and_then(|player| player.remote_player()),
-            remote_v3: self
-                .player_v3
-                .as_ref()
-                .and_then(|player| player.remote_player()),
+            remote_v1,
+            remote_v3,
         })
     }
 
@@ -269,13 +276,13 @@ pub fn local_player<'a>() -> Option<LocalPlayer<'a>> {
 
 pub fn find_player<'a>(id: i32) -> Option<Player<'a>> {
     match version() {
-        Version::V037 => Some(Player {
-            player_v1: r1::find_player(id),
+        Version::V037 => r1::find_player(id).map(|player| Player {
+            player_v1: Some(player),
             player_v3: None,
         }),
-        Version::V037R3 => Some(Player {
+        Version::V037R3 => r3::find_player(id).map(|player| Player {
             player_v1: None,
-            player_v3: r3::find_player(id),
+            player_v3: Some(player),
         }),
         _ => None,
     }
@@ -284,15 +291,21 @@ pub fn find_player<'a>(id: i32) -> Option<Player<'a>> {
 pub fn players<'a>() -> Option<PlayersIterator<'a>> {
     match version() {
         Version::V037 => Some(PlayersIterator {
-            players_v1: r1::player_pool().map(|pool| pool.m_pObject.as_mut()),
+            players_v1: r1::player_pool().map(|pool| unsafe {
+                std::ptr::read_unaligned(std::ptr::addr_of!(pool.m_pObject))
+            }),
             players_v3: None,
             index: 0,
+            _marker: std::marker::PhantomData,
         }),
 
         Version::V037R3 => Some(PlayersIterator {
-            players_v3: r3::player_pool().map(|pool| pool.m_pObject.as_mut()),
+            players_v3: r3::player_pool().map(|pool| unsafe {
+                std::ptr::read_unaligned(std::ptr::addr_of!(pool.m_pObject))
+            }),
             players_v1: None,
             index: 0,
+            _marker: std::marker::PhantomData,
         }),
 
         _ => None,
@@ -300,9 +313,10 @@ pub fn players<'a>() -> Option<PlayersIterator<'a>> {
 }
 
 pub struct PlayersIterator<'a> {
-    players_v1: Option<&'a mut [*mut r1::CPlayerInfo]>,
-    players_v3: Option<&'a mut [*mut r3::CPlayerInfo]>,
+    players_v1: Option<[*mut r1::CPlayerInfo; 1004]>,
+    players_v3: Option<[*mut r3::CPlayerInfo; 1004]>,
     index: usize,
+    _marker: std::marker::PhantomData<&'a mut ()>,
 }
 
 impl<'a> Iterator for PlayersIterator<'a> {

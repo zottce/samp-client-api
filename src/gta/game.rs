@@ -1,4 +1,4 @@
-use detour::GenericDetour;
+use retour::GenericDetour;
 
 const SHUTDOWN: usize = 0x53C900;
 
