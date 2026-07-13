@@ -3,6 +3,9 @@ use super::version::{Version, version};
 
 use crate::gta::object::CObject;
 use crate::gta::matrix::CVector;
+use crate::gta::rw::{self, rpworld::*, rwplcore::*};
+
+use std::ffi::c_void;
 
 pub struct Object<'a> {
     object_v1: Option<&'a r1::CObject>,
@@ -53,6 +56,39 @@ impl<'a> Object<'a> {
             .unwrap_or_else(|| CVector::zero())
     }
 
+    /// Returns the RenderWare atomics that actually draw this object.
+    ///
+    /// SA:MP R3 applies `SetObjectMaterial` immediately before invoking an
+    /// atomic's render callback, so consumers that need the final material
+    /// state must observe this path instead of only hooking `CEntity::Render`.
+    pub fn render_atomics(&self) -> Vec<*mut RpAtomic> {
+        let Some(entity) = self.entity() else {
+            return Vec::new();
+        };
+
+        let rwobject = entity._base._base.rw_entity as *mut RwObject;
+
+        if rwobject.is_null() {
+            return Vec::new();
+        }
+
+        let mut atomics = Vec::new();
+
+        unsafe {
+            if (*rwobject).obj_type == rpCLUMP {
+                rw::rpclump_for_all_atomics(
+                    rwobject as *mut _,
+                    Some(collect_render_atomic),
+                    &mut atomics as *mut _ as *mut c_void,
+                );
+            } else {
+                atomics.push(rwobject as *mut _);
+            }
+        }
+
+        atomics
+    }
+
     pub fn get(object_id: i32) -> Option<Object<'a>> {
         match version() {
             Version::V037 => r1::find_object(object_id).map(|obj| Object::new_v1(obj)),
@@ -60,4 +96,15 @@ impl<'a> Object<'a> {
             _ => None,
         }
     }
+}
+
+unsafe extern "C" fn collect_render_atomic(
+    atomic: *mut RpAtomic,
+    data: *mut c_void,
+) -> *mut RpAtomic {
+    unsafe {
+        (&mut *(data as *mut Vec<*mut RpAtomic>)).push(atomic);
+    }
+
+    atomic
 }
