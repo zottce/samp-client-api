@@ -24,6 +24,7 @@ pub struct DeathWindow;
 impl DeathWindow {
     pub fn on_draw<F: FnMut() + 'static>(callback: F) {
         let address = match version() {
+            Version::V03DL => crate::samp::v03dl::CDEATHWINDOW_DRAW,
             Version::V037 => crate::samp::v037::CDEATHWINDOW_DRAW,
             Version::V037R3 => crate::samp::v037r3::CDEATHWINDOW_DRAW,
             _ => return,

@@ -9,6 +9,7 @@ static mut VERSION: Version = Version::Unknown;
 
 #[derive(Debug, Clone, Copy, PartialOrd, PartialEq)]
 pub enum Version {
+    V03DL,
     V037,
     V037R2, // also unsupported
     V037R3,
@@ -55,6 +56,7 @@ pub fn version() -> Version {
             let rc = fileinfo.file_version_ls & 0xFF;
 
             let version = match (major, minor, rc) {
+                (3, 8, 0) => Version::V03DL,
                 (3, 7, 0) => Version::V037,
                 (3, 7, 2) => Version::V037R3,
                 _ => Version::Unknown,

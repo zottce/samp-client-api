@@ -1,4 +1,4 @@
-use super::{v037r3 as r3, v037 as r1};
+use super::{v03dl as dl, v037r3 as r3, v037 as r1};
 use super::version::{Version, version};
 
 use crate::gta::object::CObject;
@@ -8,6 +8,7 @@ use crate::gta::rw::{self, rpworld::*, rwplcore::*};
 use std::ffi::c_void;
 
 pub struct Object<'a> {
+    object_dl: Option<&'a dl::CObject>,
     object_v1: Option<&'a r1::CObject>,
     object_v3: Option<&'a r3::CObject>,
 }
@@ -15,6 +16,7 @@ pub struct Object<'a> {
 impl<'a> Object<'a> {
     fn new_v1(object: &'a r1::CObject) -> Object<'a> {
         Object {
+            object_dl: None,
             object_v1: Some(object),
             object_v3: None,
         }
@@ -22,16 +24,26 @@ impl<'a> Object<'a> {
 
     fn new_v3(object: &'a r3::CObject) -> Object<'a> {
         Object {
+            object_dl: None,
             object_v3: Some(object),
             object_v1: None,
+        }
+    }
+
+    fn new_dl(object: &'a dl::CObject) -> Object<'a> {
+        Object {
+            object_dl: Some(object),
+            object_v1: None,
+            object_v3: None,
         }
     }
 
     pub fn entity(&self) -> Option<&'a mut CObject> {
         let v1 = self.object_v1.map(|obj| obj._base.m_pGameEntity as *mut CObject);
         let v3 = self.object_v3.map(|obj| obj._base.m_pGameEntity as *mut CObject);
+        let dl = self.object_dl.map(|obj| obj.base.game_entity as *mut CObject);
 
-        v1.or(v3)
+        dl.or(v1).or(v3)
             .filter(|ptr| !ptr.is_null())
             .map(|ptr| unsafe { &mut *ptr })
     }
@@ -91,6 +103,7 @@ impl<'a> Object<'a> {
 
     pub fn get(object_id: i32) -> Option<Object<'a>> {
         match version() {
+            Version::V03DL => dl::find_object(object_id).map(|obj| Object::new_dl(obj)),
             Version::V037 => r1::find_object(object_id).map(|obj| Object::new_v1(obj)),
             Version::V037R3 => r3::find_object(object_id).map(|obj| Object::new_v3(obj)),
             _ => None,

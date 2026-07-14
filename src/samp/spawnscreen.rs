@@ -24,6 +24,7 @@ pub struct SpawnScreen;
 impl SpawnScreen {
     pub fn on_draw<F: FnMut() + 'static>(callback: F) {
         let address = match version() {
+            Version::V03DL => 0x70A30,
             Version::V037 => 0x6C9B0,
             Version::V037R3 => 0x708A0,
             _ => return,

@@ -24,6 +24,7 @@ pub struct LabelPool;
 impl LabelPool {
     pub fn on_draw<F: FnMut() + 'static>(callback: F) {
         let address = match version() {
+            Version::V03DL => 0x1350,
             Version::V037 => 0x1340,
             Version::V037R3 => 0x1340,
             _ => return,

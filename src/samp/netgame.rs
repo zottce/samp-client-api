@@ -1,12 +1,13 @@
 use std::ptr::NonNull;
 use std::net::SocketAddr;
 
-use super::{v037, v037r3};
+use super::{v03dl, v037, v037r3};
 use super::version::{Version, version};
 use retour::GenericDetour;
 use crate::samp::Gamestate;
 
 pub struct NetGame<'a> {
+    netgame_dl: Option<&'a mut v03dl::CNetGame>,
     netgame_v1: Option<&'a mut v037::CNetGame>,
     netgame_v3: Option<&'a mut v037r3::CNetGame>,
 }
@@ -14,12 +15,19 @@ pub struct NetGame<'a> {
 impl<'a> NetGame<'a> {
     pub fn get() -> NetGame<'a> {
         match version() {
+            Version::V03DL => NetGame {
+                netgame_dl: v03dl::CNetGame::get(),
+                netgame_v1: None,
+                netgame_v3: None,
+            },
             Version::V037 => NetGame {
+                netgame_dl: None,
                 netgame_v1: v037::CNetGame::get(),
                 netgame_v3: None,
             },
 
             Version::V037R3 => NetGame {
+                netgame_dl: None,
                 netgame_v1: None,
                 netgame_v3: v037r3::CNetGame::get(),
             },
@@ -30,6 +38,7 @@ impl<'a> NetGame<'a> {
 
     pub fn addr(&self) -> Option<SocketAddr> {
         match version() {
+            Version::V03DL => self.netgame_dl.as_ref().and_then(|netgame| netgame.addr()),
             Version::V037 => self.netgame_v1.as_ref().and_then(|netgame| netgame.addr()),
             Version::V037R3 => self.netgame_v3.as_ref().and_then(|netgame| netgame.addr()),
             _ => None,
@@ -38,6 +47,7 @@ impl<'a> NetGame<'a> {
 
     pub fn on_destroy<F: FnMut() + 'static>(callback: F) {
         let address = match version() {
+            Version::V03DL => 0x9570,
             Version::V037 => 0x9380,
             Version::V037R3 => 0x9510,
             _ => return,
@@ -61,6 +71,7 @@ impl<'a> NetGame<'a> {
 
     pub fn on_reconnect<F: FnMut() + 'static>(callback: F) {
         let address = match version() {
+            Version::V03DL => 0xA230,
             Version::V037 => 0xA060,
             Version::V037R3 => 0xA1E0,
             _ => return,
@@ -84,6 +95,7 @@ impl<'a> NetGame<'a> {
 
     pub fn on_connected<F: FnMut() + 'static>(callback: F) {
         let address = match version() {
+            Version::V03DL => 0xAA60,
             Version::V037 => 0xA890,
             Version::V037R3 => 0xAA20,
             _ => return,

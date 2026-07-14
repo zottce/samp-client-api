@@ -24,6 +24,7 @@ pub struct AudioStream;
 impl AudioStream {
     pub fn on_process<F: FnMut() + 'static>(callback: F) {
         let address = match version() {
+            Version::V03DL => 0x66180,
             Version::V037 => 0x62B40,
             Version::V037R3 => 0x65F90,
             _ => return,
